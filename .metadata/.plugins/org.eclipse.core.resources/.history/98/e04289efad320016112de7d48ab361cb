@@ -1,0 +1,238 @@
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+
+
+public class AmbitoNegacion {
+	public static final String RUTA = "C:\\Users\\Gorro\\Desktop\\Tesis\\Textos\\";
+	public static final String BSLASH = "\\";
+    public static StringBuilder reglaN1 = new StringBuilder();
+    public static StringBuilder reglaN2 = new StringBuilder();
+    public static StringBuilder reglaN3 = new StringBuilder();
+    
+    public static void main(String[] args) {
+//        String[] texto = {"Articulo","Biografia","Canciones","Cuentos","Entrevista","Fabula","Frag Novela","Lecturas",
+//                            "Leyendas","Mitos","Noticia","Obrasde teatro","Otros","Poemas","Reportaje"};//nombre las carpetas y archivos a analizar.
+        String[] texto = {"Lecturas"};
+        File archivo = null;
+        FileReader fr = null;
+        BufferedReader br = null;
+        FileWriter fichero= null;
+        PrintWriter pw = null; 
+        int NumeroLineas = 0;//Contendra el numero de lineas del archivo que contiene las frases y oraciones con negacion
+        try {
+            for(String nombre : texto){
+                archivo = new File(RUTA + nombre + BSLASH + nombre + "_cn.txt");
+                fr = new FileReader (archivo);
+                br = new BufferedReader(fr);
+                while((br.readLine())!=null)
+                    NumeroLineas++;
+                fr.close();
+                for(int i = 1;i<=NumeroLineas;i++){
+                    ambitoDeLaNegacion(RUTA + nombre + BSLASH + nombre + "_cn"+i+".txt");//Se envia el archivo que contiene el arbol de dependencia de una frase u oracion
+                }
+                NumeroLineas = 0;
+            }
+        } catch (Exception e) {
+            System.out.println(e);
+        }           
+        try{
+			// Blank workbook
+			HSSFWorkbook workbook = new HSSFWorkbook();
+	
+			// Create a blank sheet
+			HSSFSheet sheet;
+			Row row;
+	
+			int rownum = 0;		
+			for(int i = 0;i < 3;i++){
+				String[] reglas;
+				if(i==0){
+					reglas = reglaN1.toString().split("   ");
+					sheet = workbook.createSheet("Regla N°1");
+					row = sheet.createRow(rownum);
+					row.createCell(0).setCellValue("Ambito");
+					row.createCell(1).setCellValue("Archivo");
+				}
+				else if(i==1){
+					reglas = reglaN2.toString().split("   ");
+					sheet = workbook.createSheet("Regla N°2");
+					row = sheet.createRow(rownum);
+					row.createCell(0).setCellValue("Ambito");
+					row.createCell(1).setCellValue("Archivo");
+				}
+				else{
+					reglas = reglaN3.toString().split("   ");
+					sheet = workbook.createSheet("Regla N°3");
+					row = sheet.createRow(rownum);
+					row.createCell(0).setCellValue("Ambito");
+					row.createCell(1).setCellValue("Archivo");
+				}
+				int cellnum = 0;				
+				for (String cell : reglas) {
+					if (cellnum == 1) {
+						row.createCell(cellnum).setCellValue(cell);
+						row = sheet.createRow(++rownum);
+						cellnum = 0;
+					} else {
+						row.createCell(cellnum++).setCellValue(cell);
+					}
+				}
+				rownum=0;
+			}
+		    FileOutputStream out = 
+		        new FileOutputStream(new File(RUTA+"test.xls"));
+		    workbook.write(out);
+		    out.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    public static void ambitoDeLaNegacion(String Fichero){
+        List<List> Nodos = new ArrayList<List>();
+        Nodos = nodos(Fichero);
+        int tamano = Nodos.get(0).size();
+        for(int i = 0;i<tamano;i++){
+            if(        Nodos.get(0).get(i).equals("no")//Si encunetra Particulas negativas
+                    || Nodos.get(0).get(i).equals("tampoco")
+                    || Nodos.get(0).get(i).equals("nadie")
+                    || Nodos.get(0).get(i).equals("jamás")
+                    || Nodos.get(0).get(i).equals("ninguno")){
+                regla1(Nodos,i,Fichero);//se envia la lista que contiene el arbol de dependencia y la posicion de la particula negativa
+            }
+            else if(Nodos.get(0).get(i).equals("ni")
+                    || Nodos.get(0).get(i).equals("sin")){
+                regla2(Nodos,i,Fichero);//se envia la lista que contiene el arbol de dependencia y la posicion de la particula negativa
+            }else if(Nodos.get(0).get(i).equals("nunca")
+                    || Nodos.get(0).get(i).equals("nada")){
+                regla3(Nodos, i, Fichero);
+            }
+        }
+    
+    }
+    public static List nodos(String Fichero){
+        File archivo = null;
+        FileInputStream fr = null;
+        InputStreamReader isr = null;
+        BufferedReader br = null; 
+        List<String> Nodos = new ArrayList<String>();//Se guardaran todos los nodos arbol
+        List<Integer> Nivel = new ArrayList<Integer>();//Se guardara el nivel donde se encuentra el nodo
+        List<List> lista = new ArrayList<List>();//Se almacenaran las listas de nodo y nivel
+        
+        try {
+            archivo = new File(Fichero);
+            fr = new FileInputStream(archivo);
+            isr = new InputStreamReader((InputStream)fr,"UTF-8");
+            br = new BufferedReader(isr);
+            String linea;
+            int i = 0;
+            int j = 0;
+            while((linea=br.readLine())!=null){
+                if(i==0){//se guarda la raiz del arbol
+                    Nodos.add(linea.trim().replace("(", "").replace(")","").replace("[","").trim());//Se alamacena solo la palabra en el nodo eliminando el resto de los caracteres
+                    Nivel.add(j);//Se almacena el nivel al cual pertenece el nodo
+                    j++;//Aumenta el nivel dado que es el nodo raiz
+                }else{                    
+                    if(linea.contains("]")){//Este corchete indica el termino que no hay mas hijos y se be volver al nivel superior
+                        j--;//Se resta un nivel
+                        continue;
+                    }else{               
+                        Nodos.add(linea.trim().replace("(", "").replace(")","").replace("[","").trim());//Se alamacena solo la palabra en el nodo eliminando el resto de los caracteres
+                        Nivel.add(j);//Se almacena el nivel al cual pertenece el nodo
+                        if(linea.contains("["))//Este corchete indica el inico de nodos hijos, por lo que se debe  aumentar el nivel
+                            j++;//se aumenta el nivel
+                    }
+                }
+                i=-1;
+            } 
+            fr.close();           
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+        lista.add(Nodos);
+        lista.add(Nivel);
+        return lista;
+    
+    }
+    public static void regla1(List<List> Nodos, int posicion, String Fichero){        
+        String papa     = "";//Se almacenara el nodo padre de la negacion
+        String negacion = "";//Se almacenara la negacion
+        String hermano  = "";//Se almacenara el nodo hermano
+        StringBuilder hijo = new StringBuilder();//Se alamacenaran los nodos hijos del hermano
+        int nivel = -1;
+        boolean neg = false;//Bandera para reconocer si se ha guardado la particula negativa
+        boolean herm = false;//Bandera para saber si el nodo negacion tiene hermanano
+        int tamano = Nodos.get(0).size();
+        
+        for(int i = posicion;i<tamano;i++){
+            if(!neg){                
+                nivel    = (int) Nodos.get(1).get(i);//Almacena el nivel para luego buscar al padre
+                negacion = (String) Nodos.get(0).get(i);//Almacena la particula negativa
+                for(int k = i;k >= 0 ;k--){//Ciclo para buscar al nodo padre
+                    if(nivel > (int) Nodos.get(1).get(k)){//Si encuentra un nodo con un nivel menor
+                       papa = (String) Nodos.get(0).get(k);//Alamacena el el nodo padre
+                       break;
+                    }
+                }
+                neg = true;
+                continue;
+            }else{
+                if(nivel > (int) Nodos.get(1).get(i)){//Si el nivel del proximo nodo es menor, entonces no tiene hermano
+                    break;
+                }
+                else{
+                    if(nivel == (int) Nodos.get(1).get(i)){//Si el nodo es del mismo 
+                        hermano = (String) Nodos.get(0).get(i);//Se almacena el nodo hermano
+                        int hijos = i+1;
+                        if(hijos != tamano){
+                            while(nivel < (int) Nodos.get(1).get(hijos)){//se verifica que tenga hijos
+                                hijo.append((String) Nodos.get(0).get(hijos++) + " ");//se almacenan los nodos hijos
+                                if(hijos == tamano) break;
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        reglaN1.append(negacion+" "+papa.trim()+" "+hermano.trim()+" " + hijo+"   "+Fichero+"   ");
+    }
+    public static void regla2(List<List> Nodos, int posicion,String Fichero){
+        int nivel = (int) Nodos.get(1).get(posicion);
+        String negacion = (String) Nodos.get(0).get(posicion);
+        StringBuilder hijos = new StringBuilder();
+        while(Nodos.get(1).size()<= posicion){
+        	if(nivel < (int) Nodos.get(1).get(++posicion)){
+        		hijos.append((String) Nodos.get(0).get(posicion) + " ");        		
+        	}
+        }
+        reglaN2.append(negacion + hijos + "   "+Fichero+"   ");
+    }
+    public static void regla3(List<List> Nodos,int posicion,String Fichero){
+        String Negacion = (String) Nodos.get(0).get(posicion);
+        int nivel = (int) Nodos.get(1).get(posicion);
+        String padre = null;
+        while(nivel <= (int) Nodos.get(1).get(posicion)){            
+                posicion--;            
+        }
+        reglaN3.append(Negacion +" "+ (String) Nodos.get(0).get(posicion)+"   "+Fichero+"   ");
+    }
+    
+}
